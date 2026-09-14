@@ -105,7 +105,6 @@ namespace MusicBeePlugin
             Controls.Add(_videoView);
             panel.Controls.Add(this);
 
-            // Starts the tokens up
             SetVideo(mbApiInterface.NowPlaying_GetFileUrl());
 
             // Very important setup to allow video-audio sync
@@ -114,6 +113,8 @@ namespace MusicBeePlugin
             // Whenever the videos plays, it changes position to music position + _offset_click, generally this is because the user clicked in the position bar
             SetPlayEvent();
         }
+
+        // Sets media to be played on the MediaPlayer.
         public void SetVideo(string videoUri)
         {
             if (videoUri == _current_song_uri)

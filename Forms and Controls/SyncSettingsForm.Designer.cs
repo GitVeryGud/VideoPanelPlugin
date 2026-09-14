@@ -28,7 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SyncSettingsForm));
             this.video_delay = new System.Windows.Forms.TextBox();
             this.video_click_delay = new System.Windows.Forms.TextBox();
@@ -37,7 +36,6 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.apply = new System.Windows.Forms.Button();
-            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.video_delay_tooltip_icon = new System.Windows.Forms.PictureBox();
             this.reset = new System.Windows.Forms.Button();
             this.video_click_delay_tooltip_icon = new System.Windows.Forms.PictureBox();
@@ -116,11 +114,6 @@
             this.apply.Text = "Apply";
             this.apply.UseVisualStyleBackColor = true;
             this.apply.Click += new System.EventHandler(this.apply_Click);
-            // 
-            // toolTip1
-            // 
-            this.toolTip1.ToolTipIcon = System.Windows.Forms.ToolTipIcon.Info;
-            this.toolTip1.ToolTipTitle = "Tooltipping right now";
             // 
             // video_delay_tooltip_icon
             // 
@@ -213,7 +206,6 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button apply;
-        private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.PictureBox video_delay_tooltip_icon;
         private System.Windows.Forms.Button reset;
         private System.Windows.Forms.PictureBox video_click_delay_tooltip_icon;
