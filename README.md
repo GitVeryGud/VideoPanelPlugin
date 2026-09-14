@@ -22,6 +22,6 @@ OR
 
 ## Usage
  
-1. Go to Arrange Panels.
+1. Go to **View > Arrange Panels... > available elements**.
 2. Choose the newly added "video panel" and put it wherever you prefer.
 3. Now you can watch videos on MusicBee.
