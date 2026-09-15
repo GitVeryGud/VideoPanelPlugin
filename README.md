@@ -18,7 +18,7 @@ OR
    C:\Program Files (x86)\MusicBee\Plugins\
 ```
 3. Restart MusicBee.
-4. Enable the plugin under **Edit > Preferences > Plugins**.
+4. Enable the plugin under **Edit Preferences (CTRL + O) > Plugins**.
 
 ## Usage
  
