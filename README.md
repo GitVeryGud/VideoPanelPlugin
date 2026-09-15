@@ -1,6 +1,6 @@
 # Video Panel Plugin
  
-A [MusicBee](https://www.getmusicbee.com/) plugin that embeds a [VLC](https://www.videolan.org/vlc/) video player directly into the MusicBee interface, letting you play videos directly in MusicBee.
+A [MusicBee](https://www.getmusicbee.com/) plugin that embeds a [VLC](https://www.videolan.org/vlc/) video player directly into the MusicBee interface, letting you watch videos on MusicBee without any external player.
  
 ## Installation
  
