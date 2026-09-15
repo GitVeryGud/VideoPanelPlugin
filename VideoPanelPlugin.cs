@@ -24,7 +24,7 @@ namespace MusicBeePlugin
             about.PluginInfoVersion = PluginInfoVersion;
             about.Name = "Video Panel";
             about.Description = "Embeds a VLC video player on music bee";
-            about.Author = "Me";
+            about.Author = "Nermon";
             about.TargetApplication = "Video Panel";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.VideoPlayer;
             about.VersionMajor = 1;  // your plugin version
@@ -60,11 +60,11 @@ namespace MusicBeePlugin
 
         // called by MusicBee when the user clicks Apply or Save in the MusicBee Preferences screen.
         // its up to you to figure out whether anything has changed and needs updating
-        public void SaveSettings()
-        {
-            // save any persistent settings in a sub-folder of this path
-            string dataPath = mbApiInterface.Setting_GetPersistentStoragePath();
-        }
+        //public void SaveSettings()
+        //{
+        //    // save any persistent settings in a sub-folder of this path
+        //    string dataPath = mbApiInterface.Setting_GetPersistentStoragePath();
+        //}
 
         // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
         public void Close(PluginCloseReason reason)
