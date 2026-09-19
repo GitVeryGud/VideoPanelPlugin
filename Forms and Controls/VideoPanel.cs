@@ -1,18 +1,11 @@
 ﻿using LibVLCSharp.Shared;
 using LibVLCSharp.WinForms;
+using MusicBeePlugin.Saved_Data_Classes;
 using System;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Messaging;
-using System.Runtime.Serialization.Json;
-using System.Security.Policy;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Windows.Media;
 using static MusicBeePlugin.Plugin;
 
 namespace MusicBeePlugin
@@ -84,7 +77,7 @@ namespace MusicBeePlugin
             panel.Controls.Add(loading_panel);
 
             Core.Initialize();
-            _libVlc = await Task.Run(() => new LibVLC());
+            _libVlc = await Task.Run(() => new LibVLC(enableDebugLogs: false));
 #if DEBUG
             stopwatch.Stop();
             Console.WriteLine("Time in ms to load libVlc: " + stopwatch.ElapsedMilliseconds);
@@ -171,6 +164,7 @@ namespace MusicBeePlugin
             {
                 var uri = new Uri(videoUri);
                 // Use command line options as Options for media playback (https://wiki.videolan.org/VLC_command-line_help/)
+                Console.WriteLine(mbApiInterface.NowPlaying_GetFileTag(MetaDataType.PlaybackStartTime));
                 var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio"));
                 // Stops media from being inserted on the MediaPlayer if a cancellation request was made before the media finished loading.
                 token.ThrowIfCancellationRequested();
@@ -362,52 +356,6 @@ namespace MusicBeePlugin
         public void SyncDisposeNegative()
         {
             _sync_dispose = -_sync_dispose_max;
-        }
-    }
-
-    public class SyncSettingsData
-    {
-        // Values found through trial and error.
-        public int video_delay = -500;
-        public int video_click_delay = -200;
-        public int constraints = 200;
-
-        public static SyncSettingsData ReadSyncSettings(string path)
-        {
-            string final_path = Path.Combine(path, "mb_VideoPanel", "data.json");
-            var serializer = new DataContractJsonSerializer(typeof(SyncSettingsData));
-            SyncSettingsData loadedData;
-
-            // If data doesn't exist it writes it and returns
-            if (!File.Exists(final_path))
-            {
-                return WriteSyncSettings(new SyncSettingsData(), path);
-            }
-
-            // Read JSON.
-            using (var stream = File.OpenRead(final_path))
-            {
-                loadedData = (SyncSettingsData)serializer.ReadObject(stream);
-                Utilities.debugPrint("JSON LOADED");
-            }
-
-            return loadedData;
-        }
-
-        public static SyncSettingsData WriteSyncSettings(SyncSettingsData data, string path)
-        {
-            string finalPath = Path.Combine(path, "mb_VideoPanel", "data.json");
-            Directory.CreateDirectory(Path.GetDirectoryName(finalPath));
-
-            // Write JSON.
-            var serializer = new DataContractJsonSerializer(typeof(SyncSettingsData));
-            using (var stream = File.Create(finalPath))
-            {
-                serializer.WriteObject(stream, data);
-                Utilities.debugPrint("JSON CREATED");
-            }
-
-            return data;
         }
     }
 }

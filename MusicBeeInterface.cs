@@ -576,7 +576,9 @@ namespace MusicBeePlugin
             OriginalArtist = 174,
             OriginalYear = 175,
             OriginalTitle = 177,
-			InstrumentsPerformers = 182
+			InstrumentsPerformers = 182,
+            PlaybackStartTime = 70,
+            PlaybackEndTime = 71,
         }
 
         public enum FileCodec

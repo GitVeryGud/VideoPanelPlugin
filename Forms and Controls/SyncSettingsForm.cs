@@ -1,4 +1,5 @@
 ﻿using LibVLCSharp.Shared;
+using MusicBeePlugin.Saved_Data_Classes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -21,7 +22,6 @@ namespace MusicBeePlugin
         private int text_max_length = 4;
         private SyncSettingsData _sync_data;
         private VideoPanel _video_panel;
-
         public SyncSettingsForm(MusicBeeApiInterface mbApiInterface, VideoPanel video_panel)
         {
             InitializeComponent();

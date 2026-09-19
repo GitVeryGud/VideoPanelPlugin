@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 
 namespace MusicBeePlugin
 {
+    // Class for utility methods
     public static class Utilities
     {
+        #region WriteLines that only work in debug builds 
         public static void debugPrint(string message)
         {
 #if DEBUG
@@ -36,5 +38,6 @@ namespace MusicBeePlugin
             else Console.WriteLine(messageFalse);
 #endif
         }
+        #endregion
     }
 }

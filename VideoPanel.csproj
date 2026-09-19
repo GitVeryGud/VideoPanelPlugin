@@ -112,6 +112,7 @@
     <Compile Include="Forms and Controls\SyncSettingsForm.Designer.cs">
       <DependentUpon>SyncSettingsForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Saved Data Classes\UserData.cs" />
     <Compile Include="Utilities.cs" />
     <Compile Include="MusicBeeInterface.cs" />
     <Compile Include="VideoPanelPlugin.cs" />
