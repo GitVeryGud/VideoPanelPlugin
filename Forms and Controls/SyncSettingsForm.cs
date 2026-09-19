@@ -45,7 +45,7 @@ namespace MusicBeePlugin
 
             colorToSkin();
 
-            _sync_data = SyncSettingsData.ReadSyncSettings(mbApiInterface.Setting_GetPersistentStoragePath());
+            _sync_data = _video_panel.user_data.sync_settings_data;
 
             video_delay.KeyPress += integerKeyPressNegative;
             video_click_delay.KeyPress += integerKeyPressNegative;
@@ -223,8 +223,8 @@ namespace MusicBeePlugin
                 _sync_data.video_click_delay = int.Parse(video_click_delay.Text);
                 _sync_data.constraints = int.Parse(constraints.Text);
 
-                SyncSettingsData.WriteSyncSettings(_sync_data, mbApiInterface.Setting_GetPersistentStoragePath());
-                _video_panel.SetSyncSettings(_sync_data);
+                _video_panel.user_data.sync_settings_data = _sync_data;
+                _video_panel.user_data.WriteUserData();
                 close.Text = "Close";
             }
             catch

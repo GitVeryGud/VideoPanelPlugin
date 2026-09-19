@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.Serialization.Json;
+using MusicBeePlugin.Saved_Data_Classes;
 
 namespace MusicBeePlugin
 {
@@ -14,8 +15,9 @@ namespace MusicBeePlugin
         private PluginInfo about = new PluginInfo();
         public VideoPanel video_panel = null;
         public bool is_tag_changing = false;
-        public CancellationTokenSource _cts;
+        public CancellationTokenSource cts;
         public SyncSettingsForm sync_form;
+        public UserData user_data;
 
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
@@ -33,7 +35,8 @@ namespace MusicBeePlugin
             about.MinInterfaceVersion = MinInterfaceVersion;
             about.MinApiRevision = MinApiRevision;
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
-            about.ConfigurationPanelHeight = 0;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+            about.ConfigurationPanelHeight = 0;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function     
+            user_data = new UserData(mbApiInterface.Setting_GetPersistentStoragePath());  
             return about;
         }
 
@@ -101,7 +104,7 @@ namespace MusicBeePlugin
             switch (type)
             {
                 case NotificationType.PluginStartup:
-                    _cts = new CancellationTokenSource();
+                    cts = new CancellationTokenSource();
                     break;
                 case NotificationType.TrackChanging:
                     break;
@@ -149,7 +152,7 @@ namespace MusicBeePlugin
         //  to set a MusicBee header for the panel, set about.TargetApplication in the Initialise function above to the panel header text
         public int OnDockablePanelCreated(Control panel)
         {
-            _cts = new CancellationTokenSource();
+            cts = new CancellationTokenSource();
 
             panel.MinimumSize = new Size(50, 50);
 
@@ -164,13 +167,13 @@ namespace MusicBeePlugin
                     BackColor = Color.Black
                 };
 
-                video_panel = await VideoPanel.CreateVideoPanel(mbApiInterface, panel, loading, _cts.Token);
+                video_panel = await VideoPanel.CreateVideoPanel(mbApiInterface, panel, loading, user_data, cts.Token);
             }));
 
             panel.Disposed += (s, e) =>
             {
-                _cts.Cancel();
-                _cts.Dispose();
+                cts.Cancel();
+                cts.Dispose();
                 video_panel = null;
             };
 

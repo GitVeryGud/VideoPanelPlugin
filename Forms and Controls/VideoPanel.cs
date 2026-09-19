@@ -21,10 +21,8 @@ namespace MusicBeePlugin
         public NowLoadingPanel loading_panel;
         private CancellationTokenSource _media_load_cts;
         private bool _debug = false;
-        // Check SyncSettings class for default values on _video_delay, _video_delay_click and _constraints.
-        private int _video_delay;
-        private int _video_click_delay;
-        private int _constraints;
+        // User Data
+        public UserData user_data;
         // Disposes of the first 2 syncs after the play event, that's because the first 2 syncs have an offset when playing a song with chapters.
         // Now hell if I know why this happens, the API just gives funky values for the song position depending on when or on what situation you call.
         private int _sync_dispose_max = 2;
@@ -35,9 +33,9 @@ namespace MusicBeePlugin
         public bool can_sync = true;
         private bool _is_tag_changing = false;
 
-        public static async Task<VideoPanel> CreateVideoPanel(MusicBeeApiInterface beeInterface,Control panel, NowLoadingPanel loading_panel, CancellationToken cancelation_token)
+        public static async Task<VideoPanel> CreateVideoPanel(MusicBeeApiInterface beeInterface,Control panel, NowLoadingPanel loading_panel, UserData user_data, CancellationToken cancelation_token)
         {
-            var videoPanel = new VideoPanel(beeInterface, panel, loading_panel, cancelation_token);
+            var videoPanel = new VideoPanel(beeInterface, panel, loading_panel, user_data, cancelation_token);
             try
             {
                 await videoPanel.InitVideoPanelAsync();
@@ -50,17 +48,13 @@ namespace MusicBeePlugin
             return videoPanel;
         }
 
-        private VideoPanel(MusicBeeApiInterface beeInterface, Control panel, NowLoadingPanel loading_panel, CancellationToken cancelation_token)
+        private VideoPanel(MusicBeeApiInterface beeInterface, Control panel, NowLoadingPanel loading_panel, UserData user_data, CancellationToken cancelation_token)
         {
             mbApiInterface = beeInterface;
+            this.user_data = user_data;
             this.panel = panel;
             this.loading_panel = loading_panel;
             _cancelation_token = cancelation_token;
-
-            var data = SyncSettingsData.ReadSyncSettings(mbApiInterface.Setting_GetPersistentStoragePath());
-            _video_delay = data.video_delay;
-            _video_click_delay = data.video_click_delay;
-            _constraints = data.constraints;
 
             InitializeComponent();
         }
@@ -132,7 +126,7 @@ namespace MusicBeePlugin
 
 #if DEBUG
         // For debugging purposes, if there is a need to diferentiate between the async and normal version.
-        private void SetVideoNoNoAsync(string videoUri)
+        private void SetVideoNoAsync(string videoUri)
         {
             try
             {
@@ -162,9 +156,10 @@ namespace MusicBeePlugin
 
             try
             {
+                Console.WriteLine(mbApiInterface.NowPlaying_GetFileTag(MetaDataType.PlaybackStartTime)); // Temporary
+
                 var uri = new Uri(videoUri);
                 // Use command line options as Options for media playback (https://wiki.videolan.org/VLC_command-line_help/)
-                Console.WriteLine(mbApiInterface.NowPlaying_GetFileTag(MetaDataType.PlaybackStartTime));
                 var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio"));
                 // Stops media from being inserted on the MediaPlayer if a cancellation request was made before the media finished loading.
                 token.ThrowIfCancellationRequested();
@@ -223,13 +218,14 @@ namespace MusicBeePlugin
                     Utilities.debugPrint(deviation.ToString(), _debug);
 
                     // Syncs video to music if the deviation surpasses the constraints.
-                    if (deviation > _video_delay + _constraints || deviation < _video_delay - _constraints)
+                    if (deviation > user_data.sync_settings_data.video_delay + user_data.sync_settings_data.constraints 
+                    || deviation < user_data.sync_settings_data.video_delay - user_data.sync_settings_data.constraints)
                     {
                         Utilities.debugPrint("Syncing");
                         //Utilities.debugPrint(videotime.ToString());
                         //Utilities.debugPrint(musicTime.ToString());
                         Utilities.debugPrint("pre-sync deviation: " + deviation.ToString());
-                        ChangePosition(mbApiInterface.Player_GetPosition(), _video_delay);
+                        ChangePosition(mbApiInterface.Player_GetPosition(), user_data.sync_settings_data.video_delay);
                     }
                 }
             };
@@ -244,7 +240,7 @@ namespace MusicBeePlugin
                 else _sync_dispose = _sync_dispose_max;
 
                 Utilities.debugPrint("Video Playing click");
-                ChangePosition(mbApiInterface.Player_GetPosition(), _video_click_delay);
+                ChangePosition(mbApiInterface.Player_GetPosition(), user_data.sync_settings_data.video_click_delay);
             };
         }
 
@@ -320,13 +316,6 @@ namespace MusicBeePlugin
             _videoView.Dispose();
             loading_panel.Dispose();
             loading_panel = null;
-        }
-        
-        public void SetSyncSettings(SyncSettingsData settings)
-        {
-            _video_delay = settings.video_delay;
-            _video_click_delay = settings.video_click_delay;
-            _constraints = settings.constraints;
         }
 
         public Media GetMedia()
