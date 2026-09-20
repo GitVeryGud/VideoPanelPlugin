@@ -39,5 +39,24 @@ namespace MusicBeePlugin
 #endif
         }
         #endregion
+
+        /// <summary>
+        /// Takes string in minute:second format and returns it as seconds.
+        /// </summary>
+        /// <returns></returns>
+        public static long ParseStartTime(string time)
+        {
+            if (time == "" || time == null) return 0;
+
+            int index = time.IndexOf(":");
+            string minutes = time.Substring(0, index);
+            string seconds = time.Substring(index + 1);
+
+            long time_seconds = long.Parse(minutes) * 60 + long.Parse(seconds);
+
+            debugPrint("Parsed start time: " + time_seconds);
+
+            return time_seconds;
+        }
     }
 }

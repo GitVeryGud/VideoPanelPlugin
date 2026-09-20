@@ -225,11 +225,38 @@ namespace MusicBeePlugin
                 video_panel.can_sync = !video_panel.can_sync;
             };
 
+            var debugGetNowPlayingTags = new ToolStripMenuItem("Debug Get Now Playing Tags");
+
+            debugGetNowPlayingTags.Click += (s, e) =>
+            {
+                for (int i = 1; i <= 255; i++)
+                {
+                    var field = (MetaDataType)i;
+                    string value = mbApiInterface.NowPlaying_GetFileTag(field);
+                    // value is typically null or "" for IDs MusicBee doesn't use
+                    Console.WriteLine("MetaDataType " + field + ": " + value);   
+                }
+            };
+
+            var debugGetNowPlayingProperty = new ToolStripMenuItem("Debug Get Now Playing Property");
+
+            debugGetNowPlayingProperty.Click += (s, e) =>
+            {
+                for (int i = 1; i <= 255; i++)
+                {
+                    var field = (FilePropertyType)i;
+                    string value = mbApiInterface.NowPlaying_GetFileProperty(field);
+                    Console.WriteLine("FilePropertyType " + field + ": " + value);
+                }
+            };
+
             list.Add(debug);
             list.Add(debugPlay);
             list.Add(debugDispose);
             list.Add(debugToggleLoadingPanel);
             list.Add(debugToggleSync);
+            list.Add(debugGetNowPlayingTags);
+            list.Add(debugGetNowPlayingProperty);
 #endif
 
             var syncSettings = new ToolStripMenuItem("Sync delay settings");

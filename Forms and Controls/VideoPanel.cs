@@ -21,7 +21,7 @@ namespace MusicBeePlugin
         public NowLoadingPanel loading_panel;
         private CancellationTokenSource _media_load_cts;
         private bool _debug = false;
-        // User Data
+        // User Data.
         public UserData user_data;
         // Disposes of the first 2 syncs after the play event, that's because the first 2 syncs have an offset when playing a song with chapters.
         // Now hell if I know why this happens, the API just gives funky values for the song position depending on when or on what situation you call.
@@ -29,6 +29,8 @@ namespace MusicBeePlugin
         private int _sync_dispose = 0;
         private long _last_paused_position = -1;
         private string _current_song_uri = "";
+        // Offset in milliseconds from the start of the song (PlaybackStartTime in MetaDataType).
+        private long _start_offset = 0;
         // Here in case I want to add a "sync off" option later on.
         public bool can_sync = true;
         private bool _is_tag_changing = false;
@@ -115,6 +117,9 @@ namespace MusicBeePlugin
             _media_load_cts?.Dispose();
             _media_load_cts = new CancellationTokenSource();
 
+            // Whenever video changes the offset needs to be reset.
+            _start_offset = 0;
+
             // Calls from the same threadpool as the parent panel.
             panel.Invoke((MethodInvoker)(async () =>
             {
@@ -156,11 +161,14 @@ namespace MusicBeePlugin
 
             try
             {
-                Console.WriteLine(mbApiInterface.NowPlaying_GetFileTag(MetaDataType.PlaybackStartTime)); // Temporary
+                string start_time_string = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.PlaybackStartTime);
+
+                long start_time_seconds = Utilities.ParseStartTime(start_time_string);
+                _start_offset = start_time_seconds * 1000;
 
                 var uri = new Uri(videoUri);
                 // Use command line options as Options for media playback (https://wiki.videolan.org/VLC_command-line_help/)
-                var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio"));
+                var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio", $"start-time={start_time_seconds}"));
                 // Stops media from being inserted on the MediaPlayer if a cancellation request was made before the media finished loading.
                 token.ThrowIfCancellationRequested();
                 // Stops media from being inserted on the MediaPlayer if MediaPlayer is null (generally from disposing of the plugin panel before loading is done)
@@ -191,7 +199,7 @@ namespace MusicBeePlugin
         private void ChangePosition(long track_position, int offset)
         {    
             if (IsOnLastPausedPosition(track_position, 150) || _videoView.MediaPlayer.Media == null) return;
-            _videoView.MediaPlayer.Position = (float)(track_position + offset) / _videoView.MediaPlayer.Media.Duration;
+            _videoView.MediaPlayer.Position = (float)(track_position + offset + _start_offset) / _videoView.MediaPlayer.Media.Duration;
             Utilities.debugPrint("Changed Position");
         }
 
@@ -212,7 +220,9 @@ namespace MusicBeePlugin
                     }
 
                     long videotime = e.Time;
-                    long musicTime = mbApiInterface.Player_GetPosition();
+                    // Music time is in relation to start time, so we need to readd the offset so that the video
+                    // can properly sync.
+                    long musicTime = mbApiInterface.Player_GetPosition() + _start_offset;
                     long deviation = videotime - musicTime;
 
                     Utilities.debugPrint(deviation.ToString(), _debug);
