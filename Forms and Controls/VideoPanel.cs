@@ -3,9 +3,12 @@ using LibVLCSharp.WinForms;
 using MusicBeePlugin.Saved_Data_Classes;
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Media;
 using static MusicBeePlugin.Plugin;
 
 namespace MusicBeePlugin
@@ -29,6 +32,7 @@ namespace MusicBeePlugin
         private int _sync_dispose = 0;
         private long _last_paused_position = -1;
         private string _current_song_uri = "";
+        private VideoType _current_video_type = VideoType.Default;
         // Offset in milliseconds from the start of the song (PlaybackStartTime in MetaDataType).
         private long _start_offset = 0;
         // Here in case I want to add a "sync off" option later on.
@@ -94,23 +98,74 @@ namespace MusicBeePlugin
             Controls.Add(_videoView);
             panel.Controls.Add(this);
 
-            SetVideo(mbApiInterface.NowPlaying_GetFileUrl());
+            SetVideo();
 
             // Very important setup to allow video-audio sync
             SetSyncEvent();
 
             // Whenever the videos plays, it changes position to music position + _offset_click, generally this is because the user clicked in the position bar
             SetPlayEvent();
+
+            // Event to make non-default VideoTypes repeat infinitely.
+            SetEndEvent();
+        }
+
+        // Sets video type depending on the saved tag in the file.
+        private void SetVideoType() {
+            try
+            {
+                string tag = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Custom18);
+                string kind = mbApiInterface.NowPlaying_GetFileProperty(FilePropertyType.Kind);
+
+                // Audio files default to forcing artwork.
+                if (kind.Contains("audio"))
+                {
+                    _current_video_type = VideoType.ForceArtwork;
+                    return;
+                }
+
+                // Finds separator (if there is none throws error and goes back to default)
+                int index = tag.IndexOf(";");
+
+                if (Enum.TryParse(tag.Substring(0, index), out VideoType type))
+                {
+                    _current_video_type = type;
+                }
+
+                else
+                {
+                    _current_video_type = VideoType.Default;
+                }
+            }
+
+            // If nothing is found just sets it to Default.
+            catch (Exception ex)
+            {
+                Utilities.debugPrint("SetVideoType error: " + ex.Message);
+                _current_video_type = VideoType.Default;
+            }
         }
 
         // Sets media to be played on the MediaPlayer.
-        public void SetVideo(string videoUri)
+        public void SetVideo()
         {
+            var videoUri = mbApiInterface.NowPlaying_GetFileUrl();
+
             if (videoUri == _current_song_uri)
             {
                 Utilities.debugPrint("Didn't set video because uri didn't change");
                 return;
             }
+
+            if (videoUri == null)
+            {
+                // Stops last video from continuing to play (deals with non-default VideoTypes);
+                _videoView.MediaPlayer.Stop();
+                Utilities.debugPrint("Didn't set video because uri is null");
+                return;
+            }
+
+            SetVideoType();
 
             // Requests a cancellation and creates new source for the next token.
             _media_load_cts?.Cancel();
@@ -120,13 +175,56 @@ namespace MusicBeePlugin
             // Whenever video changes the offset needs to be reset.
             _start_offset = 0;
 
-            // Calls from the same threadpool as the parent panel.
-            panel.Invoke((MethodInvoker)(async () =>
-            {
-                SetVideoAsync(videoUri);
-            }));
-
             _current_song_uri = videoUri;
+
+            switch (_current_video_type)
+            {
+                case VideoType.Default:
+                    // Calls from the same threadpool as the parent panel.
+                    panel.Invoke((MethodInvoker)(async () =>
+                    {
+                        SetVideoAsync(videoUri);
+                    }));
+                    break;
+
+                case VideoType.ForceArtwork:
+                    videoUri = mbApiInterface.NowPlaying_GetArtworkUrl();
+
+                    if (videoUri == null)
+                    {
+                        _videoView.MediaPlayer.Stop();
+                        return;
+                    }
+
+                    // Calls from the same threadpool as the parent panel.
+                    panel.Invoke((MethodInvoker)(async () =>
+                    {
+                        SetVideoAsyncForceArtwork(videoUri);
+                    }));
+                    break;
+
+                case VideoType.CustomVideo:
+                    string tag = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Custom18);
+                    // Finds separator
+                    int index = tag.IndexOf(";");
+
+                    // This video type follows the format VideoType;VideoURL in the tag.
+                    videoUri = tag.Substring(index + 1);
+
+                    // If null (unlikely) or file doesn't exist.
+                    if (videoUri == null || !File.Exists(videoUri))
+                    {
+                        _videoView.MediaPlayer.Stop();
+                        return;
+                    }
+
+                    // Calls from the same threadpool as the parent panel.
+                    panel.Invoke((MethodInvoker)(async () =>
+                    {
+                        SetVideoAsyncCustomVideo(videoUri);
+                    }));
+                    break;
+            } 
         }
 
 #if DEBUG
@@ -141,6 +239,8 @@ namespace MusicBeePlugin
                 var media = new Media(_libVlc, uri, "no-audio");
                 _videoView.MediaPlayer.Media = media;
                 _last_paused_position = -1;
+
+                media.Dispose();
             }
             catch (Exception ex)
             {
@@ -164,6 +264,7 @@ namespace MusicBeePlugin
                 string start_time_string = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.PlaybackStartTime);
 
                 long start_time_seconds = Utilities.ParseStartTime(start_time_string);
+                // offset is in milliseconds.
                 _start_offset = start_time_seconds * 1000;
 
                 var uri = new Uri(videoUri);
@@ -180,6 +281,8 @@ namespace MusicBeePlugin
                 {
                     Play();
                 }
+
+                media.Dispose();
             }
             catch (Exception ex)
             {
@@ -194,13 +297,88 @@ namespace MusicBeePlugin
                 stopwatch.Stop();
                 Utilities.debugPrint("Time in ms to load media: " + stopwatch.ElapsedMilliseconds);
             }
-        }        
+        }
 
-        private void ChangePosition(long track_position, int offset)
-        {    
-            if (IsOnLastPausedPosition(track_position, 150) || _videoView.MediaPlayer.Media == null) return;
-            _videoView.MediaPlayer.Position = (float)(track_position + offset + _start_offset) / _videoView.MediaPlayer.Media.Duration;
-            Utilities.debugPrint("Changed Position");
+        private async void SetVideoAsyncForceArtwork(string videoUri)
+        {
+            // Assigns token to this async method so that even when media_load_cts is disposed, its token can cancel this method.
+            var token = _media_load_cts.Token;
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            loading_panel.Show();
+
+            try
+            {
+                var uri = new Uri(videoUri);
+                // Use command line options as Options for media playback (https://wiki.videolan.org/VLC_command-line_help/)
+                var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio"));
+                // Stops media from being inserted on the MediaPlayer if a cancellation request was made before the media finished loading.
+                token.ThrowIfCancellationRequested();
+                // Stops media from being inserted on the MediaPlayer if MediaPlayer is null (generally from disposing of the plugin panel before loading is done)
+                if (_videoView.MediaPlayer == null) throw new ArgumentNullException("_videoView.MediaPlayer cannot be null");
+                _videoView.MediaPlayer.Media = media;
+                // Always play regardless, since it's independant of the track.
+                _videoView.MediaPlayer.Play();
+                _last_paused_position = -1;
+
+                media.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting video: {ex.Message}");
+            }
+
+            finally
+            {
+                // Stops the loading screen from being hidden while the user is changing songs but the last song didn't finish loading (eg: was cancelled)
+                if (!token.IsCancellationRequested) loading_panel.Hide();
+
+                stopwatch.Stop();
+                Utilities.debugPrint("Time in ms to load media: " + stopwatch.ElapsedMilliseconds);
+            }
+        }
+
+        private async void SetVideoAsyncCustomVideo(string videoUri)
+        {
+            // Assigns token to this async method so that even when media_load_cts is disposed, its token can cancel this method.
+            var token = _media_load_cts.Token;
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            loading_panel.Show();
+
+            try
+            {
+                var uri = new Uri(videoUri);
+                // Use command line options as Options for media playback (https://wiki.videolan.org/VLC_command-line_help/)
+                var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio", "input-repeat=65535"));
+                // Stops media from being inserted on the MediaPlayer if a cancellation request was made before the media finished loading.
+                token.ThrowIfCancellationRequested();
+                // Stops media from being inserted on the MediaPlayer if MediaPlayer is null (generally from disposing of the plugin panel before loading is done)
+                if (_videoView.MediaPlayer == null) throw new ArgumentNullException("_videoView.MediaPlayer cannot be null");
+                _videoView.MediaPlayer.Media = media;
+                _last_paused_position = -1;
+                // Always play regardless, since it's independant of the track.
+                _videoView.MediaPlayer.Play();
+
+                media.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting video: {ex.Message}");
+            }
+
+            finally
+            {
+                // Stops the loading screen from being hidden while the user is changing songs but the last song didn't finish loading (eg: was cancelled)
+                if (!token.IsCancellationRequested) loading_panel.Hide();
+
+                stopwatch.Stop();
+                Utilities.debugPrint("Time in ms to load media: " + stopwatch.ElapsedMilliseconds);
+            }
         }
 
         private void SetSyncEvent()
@@ -209,8 +387,8 @@ namespace MusicBeePlugin
             // Is already naturally throttled by VLC, fires off about once every 200ms.
             _videoView.MediaPlayer.TimeChanged += (s, e) =>
             {
-                // Only sync if allowed and the PlayState is playing.
-                if (can_sync)
+                // Only sync if can interact with video and the PlayState is playing.
+                if (!CannotInteractWithVideo())
                 {
                     if (_sync_dispose > 0)
                     {
@@ -254,8 +432,36 @@ namespace MusicBeePlugin
             };
         }
 
+        private void SetEndEvent()
+        {
+            _videoView.MediaPlayer.EndReached += (sender, args) =>
+            {
+                // Only do this if the VideoType is non-interactible.
+                if (CannotInteractWithVideo())
+                {
+                    // Called from a threadpool to avoid deadlocks.
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        _videoView.MediaPlayer.Play(_videoView.MediaPlayer.Media); // restart playback
+                    });
+
+                    Utilities.debugPrint("loop restart");
+                }
+            };
+        }
+
+        private void ChangePosition(long track_position, int offset)
+        {
+            // If is close to last position (eg: paused and unpaused) || There's no media || Video type is something else (they generally just loop)
+            if (IsOnLastPausedPosition(track_position, 150) || _videoView.MediaPlayer.Media == null || CannotInteractWithVideo()) return;
+            _videoView.MediaPlayer.Position = (float)(track_position + offset + _start_offset) / _videoView.MediaPlayer.Media.Duration;
+            Utilities.debugPrint("Changed Position");
+        }
+
         public void Play()
         {
+            if (CannotInteractWithVideo()) return;
+
             _videoView.MediaPlayer.Play();
         }
 
@@ -268,17 +474,28 @@ namespace MusicBeePlugin
 
         public void Pause()
         {
+            if (CannotInteractWithVideo()) return;
+
             _last_paused_position = mbApiInterface.Player_GetPosition();
             _videoView.MediaPlayer.SetPause(true);
         }
 
+        // Put here all conditions that might make the user unable to interact with the video through pausing and changing position.
+        private bool CannotInteractWithVideo()
+        {
+            return _current_video_type != VideoType.Default;
+        }
+
         // MusicBee saves tags after stop, before the next track loads, so you need to free up the file
-        // if you're clicking on the same song, thus allowing the tag to get saved without any sharing issue.
+        // if you're clicking on the same song, thus allowing the tag to get saved without any sharing issue (most of the time).
         public void Stop()
         {
             // Deals with edge case in which you go from a song to a video (like mkv, that opens a new window and doesn't really interact a lot with MusicBee)
             // Also saves the _last_paused_position for when you double click the song you were already listening to so that the video stutters a bit less.
-            Pause();
+            if (!CannotInteractWithVideo())
+            {
+                _videoView.MediaPlayer.Stop();
+            }
 
             Utilities.debugPrint("Stopped");
 
@@ -356,5 +573,12 @@ namespace MusicBeePlugin
         {
             _sync_dispose = -_sync_dispose_max;
         }
+    }
+
+    public enum VideoType
+    {
+        Default = 0,
+        ForceArtwork = 1,
+        CustomVideo = 2
     }
 }

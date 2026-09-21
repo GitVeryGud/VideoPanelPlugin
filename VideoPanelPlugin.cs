@@ -109,8 +109,7 @@ namespace MusicBeePlugin
                 case NotificationType.TrackChanging:
                     break;
                 case NotificationType.TrackChanged:
-                    var uri = mbApiInterface.NowPlaying_GetFileUrl();
-                    video_panel?.SetVideo(uri);
+                    video_panel?.SetVideo();
                     break;
                 case NotificationType.PlayingTracksQueueChanged:
                     // This notification only plays if a track changed normally (the next song in the playlist was autoplayed).
@@ -250,6 +249,21 @@ namespace MusicBeePlugin
                 }
             };
 
+            var debugSetCustomTag = new ToolStripMenuItem("Debug Set Custom Tag For Now Playing");
+
+            debugSetCustomTag.Click += (s, e) =>
+            {
+                string[] values = { "tagA", "tagB", "tagC" };
+
+                Console.WriteLine(mbApiInterface.NowPlaying_GetArtworkUrl());
+
+                mbApiInterface.Library_SetFileTag(mbApiInterface.NowPlaying_GetFileUrl(), MetaDataType.Custom18, string.Join(";", values));
+
+                mbApiInterface.Library_CommitTagsToFile(mbApiInterface.NowPlaying_GetFileUrl());
+
+                Console.WriteLine("Maybe set");
+            };
+
             list.Add(debug);
             list.Add(debugPlay);
             list.Add(debugDispose);
@@ -257,11 +271,12 @@ namespace MusicBeePlugin
             list.Add(debugToggleSync);
             list.Add(debugGetNowPlayingTags);
             list.Add(debugGetNowPlayingProperty);
+            list.Add(debugSetCustomTag);
 #endif
 
-            var syncSettings = new ToolStripMenuItem("Sync delay settings");
+            var sync_settings = new ToolStripMenuItem("Sync delay settings");
 
-            syncSettings.Click += (s, e) =>
+            sync_settings.Click += (s, e) =>
             {
                 if (video_panel == null)
                 {
@@ -276,7 +291,7 @@ namespace MusicBeePlugin
                 sync_form.ShowDialog();
             };
 
-            list.Add(syncSettings);
+            list.Add(sync_settings);
 
             return list;
         }

@@ -101,6 +101,12 @@
     <Compile Include="Forms and Controls\NowLoadingPanel.Designer.cs">
       <DependentUpon>NowLoadingPanel.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms and Controls\SetVideoSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms and Controls\SetVideoSettings.Designer.cs">
+      <DependentUpon>SetVideoSettings.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -153,6 +159,10 @@
   <ItemGroup>
     <EmbeddedResource Include="Forms and Controls\NowLoadingPanel.resx">
       <DependentUpon>NowLoadingPanel.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms and Controls\SetVideoSettings.resx">
+      <DependentUpon>SetVideoSettings.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

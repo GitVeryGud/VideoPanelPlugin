@@ -12,7 +12,7 @@ namespace MusicBeePlugin.Saved_Data_Classes
     {
         private string persistent_path;
         // Update number every time a new member is added, ensuring UserData updates for old users.
-        [DataMember(IsRequired = true)] private int _version = 1;
+        [DataMember(IsRequired = true)] private int _userdata_version = 1;
         [DataMember] public SyncSettingsData sync_settings_data;
 
         public UserData(string path)
@@ -34,9 +34,9 @@ namespace MusicBeePlugin.Saved_Data_Classes
                 {
                     loadedData = (UserData)serializer.ReadObject(stream);
                     
-                    if (loadedData._version != _version)
+                    if (loadedData._userdata_version != _userdata_version)
                     {
-                        throw new VersionMismatchException(loadedData._version, _version, loadedData);
+                        throw new VersionMismatchException(loadedData._userdata_version, _userdata_version, loadedData);
                     }
 
                     SetData(loadedData);
