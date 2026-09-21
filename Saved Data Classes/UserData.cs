@@ -1,9 +1,11 @@
-﻿using System;
+﻿using LibVLCSharp.Shared;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
+using static MusicBeePlugin.Plugin;
 
 namespace MusicBeePlugin.Saved_Data_Classes
 {
@@ -11,13 +13,15 @@ namespace MusicBeePlugin.Saved_Data_Classes
     public class UserData
     {
         private string persistent_path;
-        // Update number every time a new member is added, ensuring UserData updates for old users.
+        // Update number every time a new member is added, ensuring UserData updates for old users (also remember to update SetData).
         [DataMember(IsRequired = true)] private int _userdata_version = 1;
         [DataMember] public SyncSettingsData sync_settings_data;
+        [DataMember] public Plugin.MetaDataType custom_tag;
 
         public UserData(string path)
         {
             sync_settings_data = new SyncSettingsData();
+            custom_tag = Plugin.MetaDataType.Custom18;
             persistent_path = path;
             ReadUserData();
         }
@@ -76,12 +80,14 @@ namespace MusicBeePlugin.Saved_Data_Classes
         private void SetData(UserData newData)
         {
             sync_settings_data = newData.sync_settings_data;
+            custom_tag = newData.custom_tag;
         }
 
-        // Checks if the data is null in that specific property, if it is just keeps default value, otherwise changes to read property.
+        // Checks if the data is null (or default value for finding nothing) in that specific property, if it is just keeps default value, otherwise changes to read property.
         private void SetDataDifferentVersion(UserData newData)
         {
             sync_settings_data = newData.sync_settings_data != null ? newData.sync_settings_data : sync_settings_data;
+            custom_tag = newData.custom_tag != 0 ? newData.custom_tag : custom_tag;
         }
     }
 

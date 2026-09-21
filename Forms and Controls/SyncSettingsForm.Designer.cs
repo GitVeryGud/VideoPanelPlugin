@@ -107,7 +107,7 @@
             // apply
             // 
             this.apply.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.apply.Location = new System.Drawing.Point(314, 275);
+            this.apply.Location = new System.Drawing.Point(318, 275);
             this.apply.Name = "apply";
             this.apply.Size = new System.Drawing.Size(86, 33);
             this.apply.TabIndex = 6;
@@ -160,7 +160,7 @@
             // close
             // 
             this.close.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.close.Location = new System.Drawing.Point(406, 275);
+            this.close.Location = new System.Drawing.Point(410, 275);
             this.close.Name = "close";
             this.close.Size = new System.Drawing.Size(86, 33);
             this.close.TabIndex = 11;

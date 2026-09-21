@@ -114,18 +114,11 @@ namespace MusicBeePlugin
         private void SetVideoType() {
             try
             {
-                string tag = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Custom18);
-                string kind = mbApiInterface.NowPlaying_GetFileProperty(FilePropertyType.Kind);
-
-                // Audio files default to forcing artwork.
-                if (kind.Contains("audio"))
-                {
-                    _current_video_type = VideoType.ForceArtwork;
-                    return;
-                }
+                string tag = mbApiInterface.NowPlaying_GetFileTag(user_data.custom_tag);
 
                 // Finds separator (if there is none throws error and goes back to default)
                 int index = tag.IndexOf(";");
+                string test = tag.Substring(0, index);
 
                 if (Enum.TryParse(tag.Substring(0, index), out VideoType type))
                 {
@@ -134,7 +127,7 @@ namespace MusicBeePlugin
 
                 else
                 {
-                    _current_video_type = VideoType.Default;
+                    DefaultVideoType();
                 }
             }
 
@@ -142,7 +135,21 @@ namespace MusicBeePlugin
             catch (Exception ex)
             {
                 Utilities.debugPrint("SetVideoType error: " + ex.Message);
-                _current_video_type = VideoType.Default;
+                DefaultVideoType();
+            }
+        }
+
+        // Sets VideoType to the default depending on file format.
+        private void DefaultVideoType()
+        {
+            _current_video_type = VideoType.Default;
+
+            string kind = mbApiInterface.NowPlaying_GetFileProperty(FilePropertyType.Kind);
+
+            // Audio files default to forcing artwork.
+            if (kind != null && kind.Contains("audio"))
+            {
+                _current_video_type = VideoType.ForceArtwork;
             }
         }
 
@@ -204,7 +211,7 @@ namespace MusicBeePlugin
                     break;
 
                 case VideoType.CustomVideo:
-                    string tag = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Custom18);
+                    string tag = mbApiInterface.NowPlaying_GetFileTag(user_data.custom_tag);
                     // Finds separator
                     int index = tag.IndexOf(";");
 
@@ -224,7 +231,58 @@ namespace MusicBeePlugin
                         SetVideoAsyncCustomVideo(videoUri);
                     }));
                     break;
-            } 
+            }
+        }
+
+        // For use in the SetVideoSettings class.
+        public void SetVideoForSettings(string videoUri, string customVideoUri)
+        {
+            _videoView.MediaPlayer.Stop();
+
+            // Requests a cancellation and creates new source for the next token.
+            _media_load_cts?.Cancel();
+            _media_load_cts?.Dispose();
+            _media_load_cts = new CancellationTokenSource();
+
+            // Whenever video changes the offset needs to be reset.
+            _start_offset = 0;
+
+            _current_song_uri = videoUri;
+
+            switch (_current_video_type)
+            {
+                case VideoType.Default:
+                    // Calls from the same threadpool as the parent panel.
+                    panel.Invoke((MethodInvoker)(async () =>
+                    {
+                        SetVideoAsync(videoUri);
+                    }));
+                    break;
+
+                case VideoType.ForceArtwork:
+                    var forceVideoUri = mbApiInterface.Library_GetArtworkUrl(videoUri, 0);
+
+                    if (forceVideoUri == null)
+                    {
+                        _videoView.MediaPlayer.Stop();
+                        return;
+                    }
+
+                    // Calls from the same threadpool as the parent panel.
+                    panel.Invoke((MethodInvoker)(async () =>
+                    {
+                        SetVideoAsyncForceArtwork(forceVideoUri);
+                    }));
+                    break;
+
+                case VideoType.CustomVideo:
+                    // Calls from the same threadpool as the parent panel.
+                    panel.Invoke((MethodInvoker)(async () =>
+                    {
+                        SetVideoAsyncCustomVideo(customVideoUri);
+                    }));
+                    break;
+            }
         }
 
 #if DEBUG
@@ -313,7 +371,7 @@ namespace MusicBeePlugin
             {
                 var uri = new Uri(videoUri);
                 // Use command line options as Options for media playback (https://wiki.videolan.org/VLC_command-line_help/)
-                var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio"));
+                var media = await Task.Run(() => new Media(_libVlc, uri, "no-audio", "input-repeat=65535"));
                 // Stops media from being inserted on the MediaPlayer if a cancellation request was made before the media finished loading.
                 token.ThrowIfCancellationRequested();
                 // Stops media from being inserted on the MediaPlayer if MediaPlayer is null (generally from disposing of the plugin panel before loading is done)
@@ -572,6 +630,16 @@ namespace MusicBeePlugin
         public void SyncDisposeNegative()
         {
             _sync_dispose = -_sync_dispose_max;
+        }
+
+        public VideoType GetCurrentVideoType()
+        {
+            return _current_video_type;
+        }
+
+        public void SetCurrentVideoType(VideoType new_type)
+        {
+            _current_video_type = new_type;
         }
     }
 

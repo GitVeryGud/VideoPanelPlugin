@@ -17,7 +17,7 @@ namespace MusicBeePlugin
 {
     public partial class SyncSettingsForm : Form
     {
-        public MusicBeeApiInterface mbApiInterface;
+        private MusicBeeApiInterface mbApiInterface;
         // Unlikely the user will need more than 4 digits (9999ms is already insane given that most delays don't surpass 500ms);
         private int text_max_length = 4;
         private SyncSettingsData _sync_data;
@@ -29,6 +29,10 @@ namespace MusicBeePlugin
             _video_panel = video_panel;
             this.mbApiInterface = mbApiInterface;
 
+            MaximizeBox = false;
+            MinimizeBox = false;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+
             var video_delay_tooltip = new System.Windows.Forms.ToolTip();
             var video_click_delay_tooltip = new System.Windows.Forms.ToolTip();
             var constraints_tooltip = new System.Windows.Forms.ToolTip();
@@ -38,10 +42,6 @@ namespace MusicBeePlugin
             constraints_tooltip.SetToolTip(constraints_tooltip_icon, "Maximum deviation value from Video Delay, " +
                 "lower numbers means video tries to sync more often and stutters more, " +
                 "higher numbers means video tries to sync less but can deviate too much from audio (default value = 200)");
-
-            MaximizeBox = false;
-            MinimizeBox = false;
-            FormBorderStyle = FormBorderStyle.FixedSingle;
 
             colorToSkin();
 
@@ -92,7 +92,6 @@ namespace MusicBeePlugin
             close.FlatAppearance.BorderColor = borderButtonSkinColor;
             close.FlatAppearance.MouseOverBackColor = backgroundButtonHighlightSkinColor;
             close.FlatAppearance.BorderSize = 1;
-
 
             // Form recolor.
             BackColor = background_skin_color;

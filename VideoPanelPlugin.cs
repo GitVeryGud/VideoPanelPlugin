@@ -6,6 +6,7 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.Serialization.Json;
 using MusicBeePlugin.Saved_Data_Classes;
+using MusicBeePlugin.Forms_and_Controls;
 
 namespace MusicBeePlugin
 {
@@ -17,6 +18,7 @@ namespace MusicBeePlugin
         public bool is_tag_changing = false;
         public CancellationTokenSource cts;
         public SyncSettingsForm sync_form;
+        public SetVideoSettings set_video_form;
         public UserData user_data;
 
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
@@ -291,7 +293,34 @@ namespace MusicBeePlugin
                 sync_form.ShowDialog();
             };
 
+            var set_video_settings = new ToolStripMenuItem("Current video settings");
+
+            set_video_settings.Click += (s, e) =>
+            {
+                if (video_panel == null)
+                {
+                    MessageBox.Show("Wait for Video Panel player to load", "Player didn't load",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var uri = mbApiInterface.NowPlaying_GetFileUrl();
+
+                if (uri == null)
+                {
+                    MessageBox.Show("No video or playing external video", "No video",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Pretty much impossible to call Dispose since it's a Dialog, but you never know.
+                set_video_form?.Dispose();
+                set_video_form = new SetVideoSettings(mbApiInterface, video_panel, uri);
+                set_video_form.ShowDialog();
+            };
+
             list.Add(sync_settings);
+            list.Add(set_video_settings);
 
             return list;
         }
